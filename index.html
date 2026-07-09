@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>حاسبة دومنة</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800&family=Tajawal:wght@400;500;700&family=IBM+Plex+Mono:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#0B3D3C;
+    --ink-2:#0F4E4C;
+    --paper:#F3EEE4;
+    --brass:#C99A3E;
+    --brass-light:#E7C57C;
+    --danger:#C0503A;
+    --ok:#3E9C72;
+    --line:rgba(255,255,255,.12);
+  }
+  *{box-sizing:border-box;}
+  html,body{
+    margin:0; height:100%;
+    background:#081F1E;
+    font-family:'Tajawal', sans-serif;
+    color:var(--paper);
+    overflow:hidden;
+  }
+  .app{
+    height:100%;
+    display:flex;
+    flex-direction:column;
+  }
+
+  header{
+    padding:14px 18px 10px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    z-index:5;
+  }
+  header .brand{
+    font-family:'Cairo',sans-serif; font-weight:800; font-size:16px;
+    display:flex; align-items:center; gap:8px;
+  }
+  header .brand .mark{
+    width:26px;height:26px;border-radius:7px;
+    background:linear-gradient(135deg, var(--brass), var(--brass-light));
+    display:flex;align-items:center;justify-content:center;
+    color:var(--ink); font-size:12px; font-weight:800;
+  }
+  .gear-btn{
+    background:rgba(255,255,255,.08); border:1px solid var(--line);
+    color:var(--paper); width:34px;height:34px;border-radius:10px;
+    display:flex;align-items:center;justify-content:center; cursor:pointer;
+    font-size:15px;
+  }
+
+  .viewport{
+    position:relative;
+    flex:1;
+    margin:0 14px 12px;
+    border-radius:18px;
+    overflow:hidden;
+    background:#02110F;
+    box-shadow:inset 0 0 0 1px var(--line);
+  }
+  video, canvas.overlay{
+    position:absolute; inset:0;
+    width:100%; height:100%;
+    object-fit:cover;
+  }
+  video{transform:scaleX(1);}
+  canvas.overlay{pointer-events:none;}
+
+  .placeholder{
+    position:absolute; inset:0;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    gap:14px; text-align:center; padding:30px;
+  }
+  .placeholder .icon{
+    width:56px;height:56px;border-radius:50%;
+    border:2px solid var(--brass);
+    display:flex;align-items:center;justify-content:center;
+    font-size:22px; color:var(--brass-light);
+  }
+  .placeholder h2{
+    font-family:'Cairo',sans-serif; font-size:16px; margin:0; font-weight:700;
+  }
+  .placeholder p{
+    font-size:12.5px; color:#B9C4BF; max-width:280px; line-height:1.7; margin:0;
+  }
+  .start-btn{
+    margin-top:6px;
+    background:var(--brass); color:var(--ink);
+    border:none; border-radius:12px; padding:12px 26px;
+    font-family:'Cairo',sans-serif; font-weight:800; font-size:14px;
+    cursor:pointer;
+  }
+
+  .score-badge{
+    position:absolute; top:14px; right:14px;
+    background:rgba(8,31,30,.72);
+    backdrop-filter:blur(6px);
+    border:1px solid var(--line);
+    border-radius:16px;
+    padding:12px 20px;
+    text-align:center;
+    min-width:96px;
+  }
+  .score-badge .num{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:34px; font-weight:700; line-height:1;
+    color:var(--brass-light);
+  }
+  .score-badge .lbl{
+    font-size:10.5px; color:#BFC9C4; margin-top:4px;
+  }
+
+  .dots-count{
+    position:absolute; bottom:14px; right:14px;
+    background:rgba(8,31,30,.72);
+    border:1px solid var(--line);
+    border-radius:12px;
+    padding:7px 12px;
+    font-size:11.5px;
+    color:#CFE0D8;
+  }
+  .dots-count b{color:var(--paper); font-family:'IBM Plex Mono';}
+
+  /* لوحة التحكم */
+  .panel{
+    position:absolute; inset:auto 0 0 0;
+    background:rgba(6,26,25,.92);
+    backdrop-filter:blur(10px);
+    border-top:1px solid var(--line);
+    border-radius:18px 18px 0 0;
+    padding:16px 18px 20px;
+    transform:translateY(100%);
+    transition:transform .3s ease;
+    z-index:10;
+  }
+  .panel.open{transform:translateY(0);}
+  .panel h3{
+    font-family:'Cairo'; font-size:13.5px; margin:0 0 14px; font-weight:700;
+    display:flex; justify-content:space-between; align-items:center;
+  }
+  .panel .close{cursor:pointer; opacity:.6; font-size:13px;}
+  .ctrl{margin-bottom:14px;}
+  .ctrl label{
+    display:flex; justify-content:space-between;
+    font-size:12px; color:#C9D3CE; margin-bottom:6px;
+  }
+  .ctrl label span:last-child{font-family:'IBM Plex Mono'; color:var(--brass-light);}
+  input[type=range]{
+    width:100%; accent-color:var(--brass);
+  }
+  .switch-row{
+    display:flex; justify-content:space-between; align-items:center;
+    font-size:12.5px; color:#C9D3CE; padding:8px 0;
+    border-top:1px solid var(--line);
+  }
+  .switch{
+    width:38px; height:22px; border-radius:11px; background:rgba(255,255,255,.15);
+    position:relative; cursor:pointer; flex-shrink:0;
+  }
+  .switch.on{background:var(--brass);}
+  .switch::after{
+    content:""; position:absolute; top:2px; right:2px;
+    width:18px; height:18px; border-radius:50%; background:#fff;
+    transition:right .15s;
+  }
+  .switch.on::after{right:18px;}
+
+  footer{
+    padding:10px 18px 16px;
+    display:flex; gap:10px;
+  }
+  footer button{
+    flex:1;
+    border:none; border-radius:12px; padding:13px;
+    font-family:'Cairo'; font-weight:700; font-size:13.5px;
+    cursor:pointer;
+  }
+  #toggleCamBtn{background:var(--brass); color:var(--ink);}
+  #settingsBtn{background:rgba(255,255,255,.08); color:var(--paper); border:1px solid var(--line);}
+
+  .err{
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    padding:30px; text-align:center; font-size:13px; color:#E8B7A9;
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <header>
+    <div class="brand"><span class="mark">٦</span> حاسبة دومنة</div>
+    <div class="gear-btn" id="settingsToggle">⚙</div>
+  </header>
+
+  <div class="viewport" id="viewport">
+    <video id="video" autoplay playsinline muted></video>
+    <canvas class="overlay" id="overlay"></canvas>
+
+    <div class="placeholder" id="placeholder">
+      <div class="icon">▦</div>
+      <h2>وجّه الكاميرا نحو قطع الدومينو</h2>
+      <p>التطبيق يحسب مجموع كل النقاط الظاهرة بالكاميرا بشكل مباشر. تأكد من إضاءة جيدة وخلفية بسيطة خلف القطع.</p>
+      <button class="start-btn" id="startBtn">تشغيل الكاميرا</button>
+    </div>
+
+    <div class="score-badge" id="scoreBadge" style="display:none;">
+      <div class="num" id="scoreNum">0</div>
+      <div class="lbl">مجموع النقاط</div>
+    </div>
+
+    <div class="dots-count" id="dotsCountEl" style="display:none;">النقاط المكتشفة: <b id="dotsN">0</b></div>
+
+    <div class="panel" id="panel">
+      <h3>الإعدادات <span class="close" id="panelClose">إغلاق</span></h3>
+
+      <div class="ctrl">
+        <label><span>حساسية العتبة (Threshold)</span><span id="threshVal">--</span></label>
+        <input type="range" id="threshSlider" min="10" max="240" value="120">
+      </div>
+      <div class="ctrl">
+        <label><span>أصغر حجم نقطة</span><span id="minAreaVal">--</span></label>
+        <input type="range" id="minAreaSlider" min="4" max="200" value="18">
+      </div>
+      <div class="ctrl">
+        <label><span>أكبر حجم نقطة</span><span id="maxAreaVal">--</span></label>
+        <input type="range" id="maxAreaSlider" min="50" max="1200" value="400">
+      </div>
+
+      <div class="switch-row">
+        <span>عتبة تلقائية (Otsu)</span>
+        <div class="switch on" id="autoThreshSwitch"></div>
+      </div>
+      <div class="switch-row">
+        <span>نقاط فاتحة على خلفية داكنة</span>
+        <div class="switch" id="invertSwitch"></div>
+      </div>
+      <div class="switch-row">
+        <span>إظهار الدوائر المكتشفة</span>
+        <div class="switch on" id="overlaySwitch"></div>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <button id="toggleCamBtn">إيقاف الكاميرا</button>
+    <button id="settingsBtn">الإعدادات</button>
+  </footer>
+</div>
+
+<script>
+(() => {
+  const video = document.getElementById('video');
+  const overlay = document.getElementById('overlay');
+  const octx = overlay.getContext('2d');
+  const placeholder = document.getElementById('placeholder');
+  const startBtn = document.getElementById('startBtn');
+  const toggleCamBtn = document.getElementById('toggleCamBtn');
+  const scoreBadge = document.getElementById('scoreBadge');
+  const scoreNum = document.getElementById('scoreNum');
+  const dotsCountEl = document.getElementById('dotsCountEl');
+  const dotsN = document.getElementById('dotsN');
+  const viewport = document.getElementById('viewport');
+
+  const panel = document.getElementById('panel');
+  const settingsBtn = document.getElementById('settingsBtn');
+  const settingsToggle = document.getElementById('settingsToggle');
+  const panelClose = document.getElementById('panelClose');
+
+  const threshSlider = document.getElementById('threshSlider');
+  const minAreaSlider = document.getElementById('minAreaSlider');
+  const maxAreaSlider = document.getElementById('maxAreaSlider');
+  const threshVal = document.getElementById('threshVal');
+  const minAreaVal = document.getElementById('minAreaVal');
+  const maxAreaVal = document.getElementById('maxAreaVal');
+
+  const autoThreshSwitch = document.getElementById('autoThreshSwitch');
+  const invertSwitch = document.getElementById('invertSwitch');
+  const overlaySwitch = document.getElementById('overlaySwitch');
+
+  let stream = null;
+  let running = false;
+  let rafId = null;
+  let lastProcess = 0;
+
+  let autoThresh = true;
+  let invert = false;
+  let showOverlay = true;
+
+  function updateSliderLabels(){
+    threshVal.textContent = threshSlider.value;
+    minAreaVal.textContent = minAreaSlider.value;
+    maxAreaVal.textContent = maxAreaSlider.value;
+  }
+  updateSliderLabels();
+  [threshSlider, minAreaSlider, maxAreaSlider].forEach(s => s.addEventListener('input', updateSliderLabels));
+
+  function bindSwitch(el, initial, onChange){
+    let state = initial;
+    el.addEventListener('click', () => {
+      state = !state;
+      el.classList.toggle('on', state);
+      onChange(state);
+    });
+  }
+  bindSwitch(autoThreshSwitch, true, v => { autoThresh = v; threshSlider.parentElement.style.opacity = v ? .4 : 1; });
+  bindSwitch(invertSwitch, false, v => invert = v);
+  bindSwitch(overlaySwitch, true, v => { showOverlay = v; if(!v) octx.clearRect(0,0,overlay.width,overlay.height); });
+  threshSlider.parentElement.style.opacity = .4;
+
+  function openPanel(){ panel.classList.add('open'); }
+  function closePanel(){ panel.classList.remove('open'); }
+  settingsBtn.addEventListener('click', openPanel);
+  settingsToggle.addEventListener('click', () => panel.classList.contains('open') ? closePanel() : openPanel());
+  panelClose.addEventListener('click', closePanel);
+
+  // ===== تشغيل / إيقاف الكاميرا =====
+  async function startCamera(){
+    try{
+      stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: 'environment' }, width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false
+      });
+      video.srcObject = stream;
+      await video.play();
+      placeholder.style.display = 'none';
+      scoreBadge.style.display = 'block';
+      dotsCountEl.style.display = 'block';
+      running = true;
+      toggleCamBtn.textContent = 'إيقاف الكاميرا';
+      resizeOverlay();
+      loop();
+    } catch(e){
+      placeholder.innerHTML = '<div class="err">تعذّر الوصول للكاميرا. تأكد من منح الإذن، ومن فتح الصفحة عبر HTTPS.</div>';
+    }
+  }
+
+  function stopCamera(){
+    running = false;
+    if(rafId) cancelAnimationFrame(rafId);
+    if(stream){ stream.getTracks().forEach(t => t.stop()); stream = null; }
+    placeholder.style.display = 'flex';
+    placeholder.innerHTML = `
+      <div class="icon">▦</div>
+      <h2>وجّه الكاميرا نحو قطع الدومينو</h2>
+      <p>التطبيق يحسب مجموع كل النقاط الظاهرة بالكاميرا بشكل مباشر. تأكد من إضاءة جيدة وخلفية بسيطة خلف القطع.</p>
+      <button class="start-btn" id="startBtn2">تشغيل الكاميرا</button>`;
+    document.getElementById('startBtn2').addEventListener('click', startCamera);
+    scoreBadge.style.display = 'none';
+    dotsCountEl.style.display = 'none';
+    octx.clearRect(0,0,overlay.width,overlay.height);
+    toggleCamBtn.textContent = 'تشغيل الكاميرا';
+  }
+
+  startBtn.addEventListener('click', startCamera);
+  toggleCamBtn.addEventListener('click', () => running ? stopCamera() : startCamera());
+
+  function resizeOverlay(){
+    const r = viewport.getBoundingClientRect();
+    overlay.width = r.width;
+    overlay.height = r.height;
+  }
+  window.addEventListener('resize', resizeOverlay);
+
+  // ===== معالجة الصورة =====
+  const proc = document.createElement('canvas');
+  const pctx = proc.getContext('2d', { willReadFrequently: true });
+  const PROC_W = 240;
+
+  function otsuThreshold(hist, total){
+    let sum = 0;
+    for(let i=0;i<256;i++) sum += i*hist[i];
+    let sumB=0, wB=0, wF=0, maxVar=0, threshold=127;
+    for(let t=0;t<256;t++){
+      wB += hist[t];
+      if(wB===0) continue;
+      wF = total - wB;
+      if(wF===0) break;
+      sumB += t*hist[t];
+      const mB = sumB/wB;
+      const mF = (sum-sumB)/wF;
+      const varBetween = wB*wF*(mB-mF)*(mB-mF);
+      if(varBetween > maxVar){ maxVar = varBetween; threshold = t; }
+    }
+    return threshold;
+  }
+
+  function processFrame(){
+    const vw = video.videoWidth, vh = video.videoHeight;
+    if(!vw || !vh) return;
+    const scale = PROC_W / vw;
+    const PROC_H = Math.round(vh * scale);
+    proc.width = PROC_W; proc.height = PROC_H;
+    pctx.drawImage(video, 0, 0, PROC_W, PROC_H);
+
+    let frame;
+    try{ frame = pctx.getImageData(0,0,PROC_W,PROC_H); }
+    catch(e){ return; }
+    const data = frame.data;
+    const n = PROC_W*PROC_H;
+    const gray = new Uint8ClampedArray(n);
+    const hist = new Uint32Array(256);
+
+    for(let i=0, p=0; i<n; i++, p+=4){
+      const g = (data[p]*0.299 + data[p+1]*0.587 + data[p+2]*0.114) | 0;
+      gray[i] = g;
+      hist[g]++;
+    }
+
+    let threshold = autoThresh ? otsuThreshold(hist, n) : parseInt(threshSlider.value,10);
+    if(autoThresh){ threshSlider.value = threshold; threshVal.textContent = threshold; }
+
+    // binary: 1 = "نقطة محتملة"
+    const bin = new Uint8Array(n);
+    for(let i=0;i<n;i++){
+      const dark = gray[i] < threshold;
+      bin[i] = invert ? (!dark ? 1 : 0) : (dark ? 1 : 0);
+    }
+
+    // ===== Connected Component Labeling (4-connectivity, iterative flood fill) =====
+    const visited = new Uint8Array(n);
+    const minArea = parseInt(minAreaSlider.value,10) * (PROC_W/300);
+    const maxArea = parseInt(maxAreaSlider.value,10) * (PROC_W/300);
+    const stack = new Int32Array(n);
+    const blobs = [];
+
+    for(let idx=0; idx<n; idx++){
+      if(!bin[idx] || visited[idx]) continue;
+      let sp = 0;
+      stack[sp++] = idx;
+      visited[idx] = 1;
+      let area=0, minX=PROC_W, maxX=0, minY=PROC_H, maxY=0;
+
+      while(sp>0){
+        const cur = stack[--sp];
+        const cx = cur % PROC_W, cy = (cur / PROC_W)|0;
+        area++;
+        if(cx<minX) minX=cx; if(cx>maxX) maxX=cx;
+        if(cy<minY) minY=cy; if(cy>maxY) maxY=cy;
+
+        if(cx>0 && bin[cur-1] && !visited[cur-1]){ visited[cur-1]=1; stack[sp++]=cur-1; }
+        if(cx<PROC_W-1 && bin[cur+1] && !visited[cur+1]){ visited[cur+1]=1; stack[sp++]=cur+1; }
+        if(cy>0 && bin[cur-PROC_W] && !visited[cur-PROC_W]){ visited[cur-PROC_W]=1; stack[sp++]=cur-PROC_W; }
+        if(cy<PROC_H-1 && bin[cur+PROC_W] && !visited[cur+PROC_W]){ visited[cur+PROC_W]=1; stack[sp++]=cur+PROC_W; }
+
+        if(area > 5000) break; // حماية من الانفجار الحسابي
+      }
+
+      const w = maxX-minX+1, h = maxY-minY+1;
+      if(area < minArea || area > maxArea) continue;
+      const boxFill = area / (w*h);
+      const aspect = w/h;
+      if(boxFill < 0.45) continue;               // ليست دائرية بما فيه الكفاية
+      if(aspect < 0.55 || aspect > 1.8) continue; // شكل غير متناسب
+
+      blobs.push({ x:(minX+maxX)/2, y:(minY+maxY)/2, r: Math.max(w,h)/2 });
+      if(blobs.length > 400) break;
+    }
+
+    // رسم النتائج
+    scoreNum.textContent = blobs.length;
+    dotsN.textContent = blobs.length;
+
+    if(showOverlay){
+      const r = viewport.getBoundingClientRect();
+      octx.clearRect(0,0,overlay.width,overlay.height);
+      const sx = r.width / PROC_W, sy = r.height / PROC_H;
+      octx.lineWidth = 2;
+      octx.strokeStyle = '#E7C57C';
+      octx.fillStyle = 'rgba(231,197,124,0.15)';
+      for(const b of blobs){
+        octx.beginPath();
+        octx.arc(b.x*sx, b.y*sy, Math.max(b.r*Math.min(sx,sy),6), 0, Math.PI*2);
+        octx.fill();
+        octx.stroke();
+      }
+    } else {
+      octx.clearRect(0,0,overlay.width,overlay.height);
+    }
+  }
+
+  function loop(ts){
+    if(!running) return;
+    if(!lastProcess || ts - lastProcess > 180){
+      lastProcess = ts;
+      processFrame();
+    }
+    rafId = requestAnimationFrame(loop);
+  }
+})();
+</script>
+
+</body>
+</html>
